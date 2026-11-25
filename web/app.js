@@ -76,6 +76,11 @@ function printedToast(r, message = T('Imprimé !', 'Printed!'), emoji = '🧾') 
 const capitalize = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const clone = (v) => JSON.parse(JSON.stringify(v));
+const formatDateTime = (at) => {
+  const two = (n) => String(n).padStart(2, '0');
+  const date = `${two(at.getDate())}/${two(at.getMonth() + 1)}/${String(at.getFullYear()).slice(-2)}`;
+  return `${date} ${two(at.getHours())}:${two(at.getMinutes())}:${two(at.getSeconds())}`;
+};
 
 function useHash() {
   const [hash, setHash] = useState(location.hash || '#/');
@@ -157,6 +162,7 @@ const ICONS = {
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
   check: '<path d="m5 12 5 5L20 7"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/>',
+  cart: '<circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M2 3h2l2.5 12h12l3-8H5"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   logout: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11"/>',
   users: '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/>',
@@ -1492,9 +1498,9 @@ function Home({ me, presets, reload, openComposer }) {
     <h2 style="margin:4px 2px 2px;font-size:26px;letter-spacing:-0.02em">${hello} ${me.name} 👋</h2>
     <p class="muted" style="margin:0 2px 18px">${capitalize(today)}</p>
     <div class="hero">
-      <a class="action-card coral" href="#/message"><div class="big-emoji">💌</div><div><strong>${T('Petit mot', 'Little note')}</strong><span>${T('Une photo, quelques mots', 'A photo, a few words')}</span></div></a>
+      <a class="action-card coral" href="#/message"><div class="big-emoji">📷</div><div><strong>${T('Photo', 'Photo')}</strong><span>${T('Imprimer une photo', 'Print a photo')}</span></div></a>
       <button class="action-card sky" onClick=${() => openComposer(emptyComposer())}><div class="big-emoji">🧾</div><div><strong>${T('Nouveau ticket', 'New ticket')}</strong><span>${T('Compose bloc par bloc', 'Compose block by block')}</span></div></button>
-      <a class="action-card mint wide" href="#/courses"><div class="big-emoji">🛒</div><div><strong>${T('Courses', 'Shopping')}</strong><span>${T('La liste de toute la famille', "The whole family's list")}</span></div></a>
+      <a class="action-card mint wide" href="#/raven"><div class="big-emoji" style="filter:grayscale(1) brightness(0)">🐦‍⬛</div><div><strong>${T('Le corbeau', 'The Raven')}</strong><span>${T('Message anonyme', 'Anonymous message')}</span></div></a>
     </div>
     <div class="section-title">${T('Mes tickets', 'My tickets')}</div>
     ${presets === null ? html`<div style="padding:30px;display:grid;place-items:center"><${Spinner} /></div>`
@@ -2084,64 +2090,112 @@ function Composer({ initial, onSaved, admin }) {
 }
 
 // ============================================================================
-// Écran : petit mot
+// Écran : photo
 // ============================================================================
 
-function Message({ me, onSaved }) {
-  const [title, setTitle] = useState(T('Pour toi', 'For you'));
-  const [text, setText] = useState('');
-  const [picto, setPicto] = useState('coeur');
+function PhotoPage({ me, onSaved }) {
   const [photo, setPhoto] = useState(null);
-  const [signature, setSignature] = useState(me.name);
   const [printing, setPrinting] = useState(false);
   const [saveSheet, setSaveSheet] = useState(false);
   const [done, setDone] = useState(false);
+  const [now, setNow] = useState(() => new Date());
 
-  const ticket = useMemo(() => {
-    const blocks = [];
-    if (picto) blocks.push({ type: 'picto', shape: picto, size: 'moyen', count: 1 });
-    if (title.trim()) blocks.push({ type: 'title', text: title.trim(), size: 2 });
-    if (photo) blocks.push({ type: 'image', upload: photo, dither: true });
-    if (text.trim()) blocks.push({ type: 'text', text: text.trim(), align: 'center' });
-    if (signature.trim()) blocks.push({ type: 'text', text: `- ${signature.trim()}`, align: 'right', bold: true });
-    blocks.push({ type: 'date' });
-    return { cut: true, spacing: 1, blocks };
-  }, [title, text, picto, photo, signature]);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatStamp = (at) => {
+    return `${me.name} - ${formatDateTime(at)}`;
+  };
+  const makeTicket = (at) => ({
+    cut: true,
+    spacing: 0,
+    blocks: photo ? [
+      { type: 'image', upload: photo, dither: true },
+      { type: 'text', text: formatStamp(at), align: 'center', small: true },
+    ] : [],
+  });
+  const ticket = useMemo(() => makeTicket(now), [photo, me.name, now]);
   const { preview, loading } = usePreview(ticket);
-  const empty = !text.trim() && !photo;
+  const empty = !photo;
 
   const print = async () => {
     setPrinting(true);
     try {
-      const r = await api('POST', '/api/print', { ticket, label: `${T('Petit mot', 'Little note')}${title.trim() ? ` · ${title.trim()}` : ''}` });
+      const r = await api('POST', '/api/print', { ticket: makeTicket(new Date()), label: T('Photo', 'Photo') });
       setDone(true);
-      printedToast(r, T('Envoyé à l’imprimante !', 'Sent to the printer!'), '💌');
+      printedToast(r, T('Photo envoyée à l’imprimante !', 'Photo sent to the printer!'), '📷');
       setTimeout(() => setDone(false), 2400);
     } catch (e) { toast(e.message, 'error'); } finally { setPrinting(false); }
   };
 
   return html`<div class="page"><div class="composer">
     <div class="message">
-      <${Field} label=${T('Une photo ?', 'A photo?')}><${PhotoField} value=${photo} onChange=${setPhoto} /></${Field}>
-      <${Field} label=${T('Un dessin ?', 'A drawing?')}><div class="pictos">
-        <button type="button" class=${!picto ? 'on' : ''} aria-label=${T('Aucun', 'None')} onClick=${() => setPicto(null)} style="font-size:15px;font-weight:800">Ø</button>
-        ${PICTOS.map(([v, e]) => html`<button type="button" class=${picto === v ? 'on' : ''} aria-label=${v} onClick=${() => setPicto(v)}>${e}</button>`)}
-      </div></${Field}>
-      <${Field} label=${T('Titre', 'Title')}><input class="input" value=${title} placeholder=${T('Pour toi', 'For you')} onInput=${(e) => setTitle(e.target.value)} /></${Field}>
-      <${Field} label=${T('Ton petit mot', 'Your little note')}><textarea class="input" rows="5" value=${text} placeholder=${T('Je pense fort à toi…', 'Thinking of you…')}
-        onInput=${(e) => setText(e.target.value)}></textarea></${Field}>
-      <${Field} label=${T('Signé', 'Signed')}><input class="input" value=${signature} onInput=${(e) => setSignature(e.target.value)} /></${Field}>
+      <${Field} label=${T('Photo', 'Photo')}><${PhotoField} value=${photo} onChange=${setPhoto} /></${Field}>
       <button class="btn primary big block" disabled=${printing || empty} onClick=${print}>
-        ${printing ? html`<${Spinner} />` : done ? html`<${Icon} name="check" /> ${T('Envoyé !', 'Sent!')}` : html`<${Icon} name="send" /> ${T("Envoyer à l'imprimante", 'Send to the printer')}`}</button>
+        ${printing ? html`<${Spinner} />` : done ? html`<${Icon} name="check" /> ${T('Envoyée !', 'Sent!')}` : html`<${Icon} name="send" /> ${T('Imprimer la photo', 'Print the photo')}`}</button>
       <button class="btn ghost block" style="margin-top:8px" disabled=${empty} onClick=${() => setSaveSheet(true)}><${Icon} name="save" /> ${T('Garder comme modèle', 'Keep as a template')}</button>
       <div class="section-title" style="display:block">${T('Aperçu', 'Preview')}</div>
       <div style="display:block" class="message-preview"><${Paper} preview=${preview} loading=${loading} /></div>
     </div>
     <aside class="preview-col"><${Paper} preview=${preview} loading=${loading} /><${PaperMeta} preview=${preview} /></aside>
     ${saveSheet && html`<${SaveSheet}
-      state=${{ ...emptyComposer(), name: title.trim() || T('Petit mot', 'Little note'), icon: '💌', blocks: ticket.blocks.map((data) => ({ data })) }}
-      onSave=${async (meta) => { await api('POST', '/api/presets', { ...meta, ticket }); toast(T('Modèle enregistré', 'Template saved'), 'ok', '✨'); onSaved(); }}
+      state=${{ ...emptyComposer(), name: T('Photo', 'Photo'), icon: '📷', blocks: ticket.blocks.map((data) => ({ data })) }}
+      onSave=${async (meta) => { await api('POST', '/api/presets', { ...meta, ticket: makeTicket(new Date()) }); toast(T('Modèle enregistré', 'Template saved'), 'ok', '✨'); onSaved(); }}
       onClose=${() => setSaveSheet(false)} />`}
+  </div></div>`;
+}
+
+// ============================================================================
+// Écran : message anonyme
+// ============================================================================
+
+function Raven() {
+  const [text, setText] = useState('');
+  const [printing, setPrinting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const makeTicket = (at) => ({
+    cut: true,
+    spacing: 0,
+    blocks: text.trim() ? [
+      { type: 'text', text: text.trim() },
+      { type: 'text', text: formatDateTime(at), align: 'center', small: true },
+    ] : [],
+  });
+  const ticket = useMemo(() => makeTicket(now), [text, now]);
+  const { preview, loading } = usePreview(ticket);
+  const empty = !text.trim();
+
+  const print = async () => {
+    setPrinting(true);
+    try {
+      const r = await api('POST', '/api/print', { ticket: makeTicket(new Date()), label: T('Message anonyme', 'Anonymous message') });
+      setDone(true);
+      printedToast(r, T('Message envoyé', 'Message sent'), '🐦‍⬛');
+      setTimeout(() => setDone(false), 2400);
+    } catch (e) { toast(e.message, 'error'); } finally { setPrinting(false); }
+  };
+
+  return html`<div class="page"><div class="composer">
+    <div class="message">
+      <${Field} label=${T('Message anonyme', 'Anonymous message')}>
+        <textarea class="input" rows="6" value=${text} placeholder=${T('Écris ton message…', 'Write your message…')}
+          onInput=${(e) => setText(e.target.value)}></textarea>
+      </${Field}>
+      <button class="btn primary big block" disabled=${printing || empty} onClick=${print}>
+        ${printing ? html`<${Spinner} />` : done ? html`<${Icon} name="check" /> ${T('Envoyé !', 'Sent!')}` : html`<${Icon} name="send" /> ${T('Envoyer le message', 'Send the message')}`}</button>
+      <div class="section-title" style="display:block">${T('Aperçu', 'Preview')}</div>
+      <div style="display:block" class="message-preview"><${Paper} preview=${preview} loading=${loading} /></div>
+    </div>
+    <aside class="preview-col"><${Paper} preview=${preview} loading=${loading} /><${PaperMeta} preview=${preview} /></aside>
   </div></div>`;
 }
 
@@ -2820,11 +2874,12 @@ function Wizard({ me, onDone }) {
 const NAV = [
   { hash: '#/', label: T('Accueil', 'Home'), icon: 'home', title: 'Printr' },
   { hash: '#/compose', label: T('Composer', 'Compose'), icon: 'ticket', title: T('Composer', 'Compose') },
-  { hash: '#/message', label: T('Petit mot', 'Little note'), icon: 'heart', title: T('Un petit mot', 'A little note') },
+  { hash: '#/message', label: T('Photo', 'Photo'), icon: 'camera', title: T('Photo', 'Photo') },
+  { hash: '#/courses', label: T('Courses', 'Shopping'), icon: 'cart', title: T('Liste de courses', 'Shopping list') },
   { hash: '#/history', label: T('Historique', 'History'), icon: 'history', title: T('Historique', 'History') },
 ];
-// Écrans accessibles depuis l'accueil, sans onglet.
-const ROUTES = [...NAV, { hash: '#/courses', title: T('Liste de courses', 'Shopping list') }];
+// Écran accessible depuis la carte d'accueil, sans onglet dédié.
+const ROUTES = [...NAV, { hash: '#/raven', title: T('Le corbeau', 'The Raven') }];
 
 function App() {
   const [me, setMe] = useState(undefined);
@@ -2897,7 +2952,8 @@ function App() {
 
   let page;
   if (route.hash === '#/compose') page = html`<${Composer} initial=${composer} onSaved=${loadPresets} admin=${me.admin} />`;
-  else if (route.hash === '#/message') page = html`<${Message} me=${me} onSaved=${loadPresets} />`;
+  else if (route.hash === '#/message') page = html`<${PhotoPage} me=${me} onSaved=${loadPresets} />`;
+  else if (route.hash === '#/raven') page = html`<${Raven} />`;
   else if (route.hash === '#/history') page = html`<${History} users=${users} me=${me} />`;
   else if (route.hash === '#/courses') page = html`<${Shopping} users=${users} />`;
   else page = html`<${Home} me=${me} presets=${presets} reload=${loadPresets} openComposer=${openComposer} />`;
