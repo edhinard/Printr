@@ -601,7 +601,7 @@ past the hallway tablet first in the morning (face recognition, then `print_tick
 The app can be opened to the Internet behind an HTTPS reverse proxy (Caddy, nginx…). It protects
 itself as follows:
 
-- **Accounts**: passwords hashed with Argon2 (8 characters minimum), session cookie `HttpOnly`,
+- **Accounts**: non-empty passwords hashed with Argon2, session cookie `HttpOnly`,
   `SameSite=Lax`, and `Secure` over HTTPS. The first account, the administrator's, can only be
   created from the local network; only the administrator can delete an account.
 - **Password attempts**: five failures per address within fifteen minutes, then a block; only one

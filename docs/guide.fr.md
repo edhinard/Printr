@@ -609,7 +609,7 @@ prénom).
 L'appli peut être ouverte sur Internet derrière un reverse proxy HTTPS (Caddy, nginx…). Elle
 se protège ainsi :
 
-- **Comptes** : mots de passe hachés avec Argon2 (8 caractères minimum), cookie de session
+- **Comptes** : mots de passe non vides hachés avec Argon2, cookie de session
   `HttpOnly`, `SameSite=Lax` et `Secure` en HTTPS. Le premier compte, administrateur, ne se crée
   que depuis le réseau local ; seul l'administrateur peut supprimer un compte.
 - **Essais de mot de passe** : cinq échecs par adresse en quinze minutes, puis blocage ; une

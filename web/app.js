@@ -1385,9 +1385,9 @@ function FirstAccount({ onLogin }) {
       'Create your account to get started. You can add the rest of the family afterwards.',
     )}</span></p>
     <div class="field"><input class="input" placeholder=${T('Ton prénom', 'Your first name')} autocomplete="username" value=${name} onInput=${(e) => setName(e.target.value)} autofocus /></div>
-    <div class="field"><input class="input" type="password" placeholder=${T('Mot de passe (8 caractères minimum)', 'Password (8 characters minimum)')} autocomplete="new-password"
+    <div class="field"><input class="input" type="password" placeholder=${T('Mot de passe', 'Password')} autocomplete="new-password"
       value=${password} onInput=${(e) => setPassword(e.target.value)} /></div>
-    <button class="btn primary big block" disabled=${busy || !name.trim() || password.length < 8}>${busy ? html`<${Spinner} />` : T('Créer mon compte', 'Create my account')}</button>
+    <button class="btn primary big block" disabled=${busy || !name.trim() || !password}>${busy ? html`<${Spinner} />` : T('Créer mon compte', 'Create my account')}</button>
     <div class="first-restore"><${RestoreButton} cls="btn ghost small" label=${T('Ou restaurer une sauvegarde', 'Or restore a backup')} /></div>
   </form>`;
 }
@@ -2599,8 +2599,8 @@ function AccountSheet({ me, users, version, update, paper, reloadUsers, onLogout
     </div>`)}</div>
     <form class="family-add" onSubmit=${add}>
       <input class="input" placeholder=${T('Prénom', 'First name')} value=${name} onInput=${(e) => setName(e.target.value)} />
-      <input class="input" type="password" placeholder=${T('Son mot de passe (8 caractères minimum)', 'Their password (8 characters minimum)')} autocomplete="new-password" value=${password} onInput=${(e) => setPassword(e.target.value)} />
-      <button class="btn secondary" disabled=${busy || !name.trim() || password.length < 8}><${Icon} name="plus" size=${16} /> ${T('Ajouter', 'Add')}</button>
+      <input class="input" type="password" placeholder=${T('Son mot de passe', 'Their password')} autocomplete="new-password" value=${password} onInput=${(e) => setPassword(e.target.value)} />
+      <button class="btn secondary" disabled=${busy || !name.trim() || !password}><${Icon} name="plus" size=${16} /> ${T('Ajouter', 'Add')}</button>
     </form>
 
     ${me.admin && html`<div class="section-title">${T('Printr', 'Printr')}</div>
@@ -2631,8 +2631,8 @@ function AccountSheet({ me, users, version, update, paper, reloadUsers, onLogout
 
     <div class="section-title">${T('Mon mot de passe', 'My password')}</div>
     <form class="family-add" onSubmit=${changePassword}>
-      <input class="input" type="password" placeholder=${T('Nouveau mot de passe (8 caractères minimum)', 'New password (8 characters minimum)')} autocomplete="new-password" value=${mine} onInput=${(e) => setMine(e.target.value)} />
-      <button class="btn secondary" disabled=${busy || mine.length < 8}>${T('Changer', 'Change')}</button>
+      <input class="input" type="password" placeholder=${T('Nouveau mot de passe', 'New password')} autocomplete="new-password" value=${mine} onInput=${(e) => setMine(e.target.value)} />
+      <button class="btn secondary" disabled=${busy || !mine}>${T('Changer', 'Change')}</button>
     </form>
 
     <button class="btn danger block" style="margin-top:22px" onClick=${onLogout}><${Icon} name="logout" /> ${T('Se déconnecter', 'Sign out')}</button>

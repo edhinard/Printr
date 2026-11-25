@@ -548,23 +548,14 @@ impl Store {
     }
 }
 
-/// Longueur minimale d'un nouveau mot de passe (l'appli est joignable depuis Internet).
-pub const MIN_PASSWORD: usize = 8;
-
 /// Vérifie un mot de passe contre son empreinte Argon2.
 pub fn verify_password(hash: &str, password: &str) -> bool {
     PasswordHash::new(hash).is_ok_and(|parsed| Argon2::default().verify_password(password.as_bytes(), &parsed).is_ok())
 }
 
 fn hash(password: &str) -> Result<String> {
-    if password.chars().count() < MIN_PASSWORD {
-        bail!(
-            "{}",
-            tr!(
-                "mot de passe trop court ({MIN_PASSWORD} caractères minimum)",
-                "password too short (at least {MIN_PASSWORD} characters)"
-            )
-        );
+    if password.is_empty() {
+        bail!("{}", tr!("mot de passe vide", "password cannot be empty"));
     }
     Argon2::default()
         .hash_password(password.as_bytes())
