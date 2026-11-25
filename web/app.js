@@ -217,6 +217,11 @@ const G = {
   challenges: T('Jeux : défis et créativité', 'Games: challenges and creativity'),
   gift: T('Petites attentions', 'Little gifts'), info: T('Infos', 'Info'), org: T('Organisation', 'Organization'),
 };
+const DITHER_ALGORITHMS = [
+  ['floyd-steinberg', T('Floyd–Steinberg : dégradés doux (photos)', 'Floyd–Steinberg: smooth gradients (photos)')],
+  ['atkinson', T('Atkinson : plus contrasté, aplats nets', 'Atkinson: more contrast, cleaner flat areas')],
+  ['bayer', T('Bayer : trame régulière, sans grain', 'Bayer: regular pattern, no grain')],
+];
 const FAMILY_THEMES = WORD_THEMES.filter(([v]) => !['developpement', 'devops', 'reseaux', 'ia'].includes(v));
 const WEEKDAYS = [
   ['lundi', T('Lundi', 'Monday')], ['mardi', T('Mardi', 'Tuesday')], ['mercredi', T('Mercredi', 'Wednesday')], ['jeudi', T('Jeudi', 'Thursday')],
@@ -293,11 +298,7 @@ const BLOCKS = [
       { key: 'dither', label: T('Tramage', 'Dithering'), kind: 'toggle', help: T('Idéal pour les photos. Désactive-le pour un logo ou un dessin.', 'Ideal for photos. Turn it off for a logo or a drawing.') },
       {
         key: 'dither_algorithm', label: T('Algorithme de tramage', 'Dithering algorithm'), kind: 'select', when: (d) => d.dither !== false,
-        options: [
-          ['floyd-steinberg', T('Floyd–Steinberg : dégradés doux (photos)', 'Floyd–Steinberg: smooth gradients (photos)')],
-          ['atkinson', T('Atkinson : plus contrasté, aplats nets', 'Atkinson: more contrast, cleaner flat areas')],
-          ['bayer', T('Bayer : trame régulière, sans grain', 'Bayer: regular pattern, no grain')],
-        ],
+        options: DITHER_ALGORITHMS,
       },
     ],
     normalize: (d) => { if (d.upload) delete d.url; return d; },
@@ -2095,6 +2096,7 @@ function Composer({ initial, onSaved, admin }) {
 
 function PhotoPage({ me, onSaved }) {
   const [photo, setPhoto] = useState(null);
+  const [ditherAlgorithm, setDitherAlgorithm] = useState('floyd-steinberg');
   const [printing, setPrinting] = useState(false);
   const [saveSheet, setSaveSheet] = useState(false);
   const [done, setDone] = useState(false);
@@ -2112,11 +2114,11 @@ function PhotoPage({ me, onSaved }) {
     cut: true,
     spacing: 0,
     blocks: photo ? [
-      { type: 'image', upload: photo, dither: true },
+      { type: 'image', upload: photo, dither: true, dither_algorithm: ditherAlgorithm },
       { type: 'text', text: formatStamp(at), align: 'center', small: true },
     ] : [],
   });
-  const ticket = useMemo(() => makeTicket(now), [photo, me.name, now]);
+  const ticket = useMemo(() => makeTicket(now), [photo, ditherAlgorithm, me.name, now]);
   const { preview, loading } = usePreview(ticket);
   const empty = !photo;
 
@@ -2133,6 +2135,15 @@ function PhotoPage({ me, onSaved }) {
   return html`<div class="page"><div class="composer">
     <div class="message">
       <${Field} label=${T('Photo', 'Photo')}><${PhotoField} value=${photo} onChange=${setPhoto} /></${Field}>
+      <${Field} label=${T('Algorithme de transformation', 'Transformation algorithm')}>
+        <div class="photo-algorithms" role="radiogroup" aria-label=${T('Algorithme de transformation', 'Transformation algorithm')}>
+          ${DITHER_ALGORITHMS.map(([value, text]) => html`<label class=${ditherAlgorithm === value ? 'photo-algorithm on' : 'photo-algorithm'}>
+            <input type="radio" name="photo-dither-algorithm" value=${value} checked=${ditherAlgorithm === value}
+              onChange=${() => setDitherAlgorithm(value)} />
+            <span>${text}</span>
+          </label>`)}
+        </div>
+      </${Field}>
       <button class="btn primary big block" disabled=${printing || empty} onClick=${print}>
         ${printing ? html`<${Spinner} />` : done ? html`<${Icon} name="check" /> ${T('Envoyée !', 'Sent!')}` : html`<${Icon} name="send" /> ${T('Imprimer la photo', 'Print the photo')}`}</button>
       <button class="btn ghost block" style="margin-top:8px" disabled=${empty} onClick=${() => setSaveSheet(true)}><${Icon} name="save" /> ${T('Garder comme modèle', 'Keep as a template')}</button>
